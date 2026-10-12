@@ -1,9 +1,7 @@
 <div align="center">
-  <img src="splic.png" alt="splic.co logo" width="160" height="160">
   <h1>splic.co</h1>
   <p>An ai-assisted video editor with your controls.</p>
 </div>
-
 ---
 
 ## Overview
