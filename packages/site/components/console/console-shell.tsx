@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { X } from "lucide-react";
+import { useSmoothScroll } from "@/components/motion/smooth-scroll";
 import type { ConsoleAccount, ConsolePreviewMeta } from "@/lib/console/types";
 import { ConsoleSidebar } from "./console-sidebar";
 import { ConsoleTopbar } from "./console-topbar";
@@ -20,10 +21,12 @@ export function ConsoleShell({
 }: ConsoleShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
-
+  const { stop, start } = useSmoothScroll();
 
   useEffect(() => {
     if (!menuOpen) return;
+
+    stop();
 
     const previouslyFocused =
       document.activeElement instanceof HTMLElement
@@ -75,9 +78,10 @@ export function ConsoleShell({
       document.removeEventListener("keydown", onKeyDown);
       cancelAnimationFrame(raf);
       document.body.style.overflow = previousOverflow;
+      start();
       previouslyFocused?.focus();
     };
-  }, [menuOpen]);
+  }, [menuOpen, start, stop]);
 
   return (
     <div className="min-h-screen bg-surface-base">
