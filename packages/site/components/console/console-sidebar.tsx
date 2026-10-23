@@ -33,6 +33,7 @@ export function ConsoleSidebar({ account, onNavigate }: ConsoleSidebarProps) {
 
       <nav
         aria-label="Console"
+        data-lenis-prevent=""
         className="flex-1 overflow-y-auto px-3 py-4"
       >
         {consoleNavGroups.map((group, groupIndex) => (
