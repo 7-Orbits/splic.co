@@ -90,20 +90,13 @@
   --default-transition-duration: 150ms;
 }
 
-@property --nav-bg-alpha {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 0.55;
-}
-
-@property --nav-blur {
-  syntax: "<length>";
-  inherits: true;
-  initial-value: 16px;
-}
-
 :root {
   color-scheme: dark;
+
+  --container-hero-max: 1280px;
+  --nav-bar-height: 56px;
+  --nav-bar-offset: 12px;
+  --nav-clearance: calc(var(--nav-bar-height) + var(--nav-bar-offset));
 
   /* Frosted-glass system: one surface language for cards, controls and
      chrome. Kept low-opacity so the dark UI still reads as dark. */
@@ -125,10 +118,36 @@
   --glow-fade: rgba(8, 9, 11, 0);
 }
 
+@media (max-width: 767px) {
+  :root {
+    --nav-bar-height: 52px;
+  }
+}
+
 html {
-  scroll-behavior: smooth;
-  scroll-padding-top: 80px;
+  scroll-padding-top: 88px;
   -webkit-text-size-adjust: 100%;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
 }
 
 body {
@@ -141,7 +160,7 @@ body {
   overflow-x: clip;
 }
 
-/* Full-page white haze behind the marketing site. */
+/* Full-page warm haze behind the marketing site. */
 .site-gradient {
   position: absolute;
   inset: 0;
@@ -150,24 +169,24 @@ body {
   background-image:
     radial-gradient(
       90rem 40rem at 50% -12rem,
-      rgba(255, 255, 255, 0.1),
+      rgba(154, 130, 94, 0.1),
       transparent 65%
     ),
     radial-gradient(
       60rem 40rem at 100% 22%,
-      rgba(255, 255, 255, 0.035),
+      rgba(154, 130, 94, 0.035),
       transparent 70%
     ),
     radial-gradient(
       60rem 40rem at 0% 58%,
-      rgba(255, 255, 255, 0.03),
+      rgba(154, 130, 94, 0.03),
       transparent 70%
     ),
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.04) 0%,
-      rgba(255, 255, 255, 0.012) 35%,
-      rgba(255, 255, 255, 0.03) 100%
+      rgba(154, 130, 94, 0.04) 0%,
+      rgba(154, 130, 94, 0.012) 35%,
+      rgba(154, 130, 94, 0.03) 100%
     );
 }
 
@@ -212,12 +231,63 @@ body {
   box-shadow: var(--glass-highlight), var(--glass-shadow);
 }
 
-/* The navbar keeps exactly one bottom hairline — no second line. */
+.site-nav {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 50;
+  padding-top: var(--nav-bar-offset);
+  pointer-events: none;
+}
+
+.site-nav-rail {
+  width: 100%;
+  max-width: var(--container-hero-max);
+  margin-inline: auto;
+}
+
+.site-nav-stack {
+  width: calc(100% - 24px);
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .site-nav-rail {
+    padding-inline: 24px;
+  }
+
+  .site-nav-stack {
+    width: 100%;
+  }
+}
+
+.nav-bar {
+  pointer-events: auto;
+  width: 100%;
+  max-width: var(--container-hero-max);
+  height: var(--nav-bar-height);
+  margin-inline: auto;
+  border-radius: 14px;
+}
+
+.site-nav-menu {
+  max-height: calc(100dvh - var(--nav-clearance) - 20px);
+}
+
 .glass-nav {
-  background-color: rgba(8, 9, 10, var(--nav-bg-alpha));
-  -webkit-backdrop-filter: blur(var(--nav-blur)) saturate(140%);
-  backdrop-filter: blur(var(--nav-blur)) saturate(140%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight), var(--glass-shadow);
+  transition:
+    background-color 300ms var(--glass-ease),
+    border-color 300ms var(--glass-ease);
+}
+
+.glass-nav[data-scrolled="true"] {
+  background-color: rgba(14, 15, 18, 0.65);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* Full-screen menus and modals use a heavier blur and a more opaque tint. */
@@ -424,6 +494,7 @@ body {
   .glass-frame,
   .glass-modal,
   .glass-nav,
+  .glass-nav[data-scrolled="true"],
   .glass-field {
     background-color: rgba(17, 19, 24, 0.92);
     background-image: none;
@@ -729,7 +800,7 @@ body {
 .container-hero {
   margin-inline: auto;
   width: 100%;
-  max-width: 1280px;
+  max-width: var(--container-hero-max);
   padding-inline: 16px;
 }
 
