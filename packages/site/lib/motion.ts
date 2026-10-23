@@ -307,22 +307,27 @@ export function initHeroIntro(): Cleanup {
   };
 }
 
-/** Nav intro plus the blur/opacity shift once the page scrolls. */
+/** Transparent nav at the top; glass tint after the page scrolls. */
 export function initNavbarMotion(): Cleanup {
   const nav = document.querySelector<HTMLElement>("[data-nav-intro]");
   if (!nav) return noop;
 
   const mm = gsap.matchMedia();
+  let scrolled = window.scrollY > 24;
 
-  const setScrolled = (scrolled: boolean) => {
-    gsap.to(nav, {
-      "--nav-bg-alpha": scrolled ? 0.78 : 0.55,
-      "--nav-blur": scrolled ? "22px" : "16px",
-      duration: 0.5,
-      ease: MOTION.easeSoft,
-      overwrite: "auto",
-    });
+  const applyScrolled = (next: boolean) => {
+    nav.dataset.scrolled = String(next);
   };
+
+  const onScroll = () => {
+    const next = window.scrollY > 24;
+    if (next === scrolled) return;
+    scrolled = next;
+    applyScrolled(next);
+  };
+
+  applyScrolled(scrolled);
+  window.addEventListener("scroll", onScroll, { passive: true });
 
   mm.add(NO_REDUCE, () => {
     gsap.fromTo(
@@ -339,28 +344,16 @@ export function initNavbarMotion(): Cleanup {
         },
       },
     );
-
-    let scrolled = window.scrollY > 24;
-    const onScroll = () => {
-      const next = window.scrollY > 24;
-      if (next === scrolled) return;
-      scrolled = next;
-      setScrolled(next);
-    };
-
-    setScrolled(scrolled);
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    return () => window.removeEventListener("scroll", onScroll);
   });
 
   mm.add(REDUCE, () => {
     nav.dataset.navDone = "true";
-    nav.style.setProperty("--nav-bg-alpha", "0.78");
-    nav.style.setProperty("--nav-blur", "22px");
   });
 
-  return () => mm.revert();
+  return () => {
+    window.removeEventListener("scroll", onScroll);
+    mm.revert();
+  };
 }
 
 /** Cursor spotlight for glass cards, delegated so it survives route changes. */
