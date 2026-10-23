@@ -1,74 +1,78 @@
+import Link from "next/link";
+import { AmbientGlow } from "./ui/ambient-glow";
 import { Wordmark } from "./wordmark";
+import { footerColumns } from "@/content/navigation";
 import { siteConfig } from "@/lib/site-config";
 
-const productLinks = [
-  { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Download", href: "#download" },
-];
-
-const resourceLinks = [
-  ...(siteConfig.links.docs
-    ? [{ label: "Documentation", href: siteConfig.links.docs, external: true }]
-    : []),
-  { label: "FAQ", href: "#faq", external: false },
-  {
-    label: "GitHub",
-    href: siteConfig.links.repository,
-    external: true,
-  },
-];
-
-const companyLinks = [
-  {
-    label: "About 7.Orbits",
-    href: siteConfig.links.organization,
-    external: true,
-  },
-  ...(siteConfig.links.contact
-    ? [{ label: "Contact", href: siteConfig.links.contact, external: false }]
-    : []),
-];
+interface FooterLink {
+  label: string;
+  href: string;
+  external?: boolean;
+}
 
 function FooterColumn({
   title,
   links,
 }: {
   title: string;
-  links: { label: string; href: string; external?: boolean }[];
+  links: FooterLink[];
 }) {
   return (
     <div>
       <h2 className="eyebrow">{title}</h2>
       <ul className="mt-4 flex flex-col gap-2.5">
-        {links.map((link) => (
-          <li key={link.label}>
-            <a
-              href={link.href}
-              className="text-lg text-text-secondary transition-colors hover:text-text-primary"
-              {...(link.external
-                ? { target: "_blank", rel: "noopener noreferrer" }
-                : {})}
-            >
-              {link.label}
-            </a>
-          </li>
-        ))}
+        {links.map((link) =>
+          link.external ? (
+            <li key={link.label}>
+              <a
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-md text-text-secondary transition-colors hover:text-text-primary"
+              >
+                {link.label}
+              </a>
+            </li>
+          ) : (
+            <li key={link.label}>
+              <Link
+                href={link.href}
+                className="text-md text-text-secondary transition-colors hover:text-text-primary"
+              >
+                {link.label}
+              </Link>
+            </li>
+          ),
+        )}
       </ul>
     </div>
   );
 }
 
 export function SiteFooter() {
+  const columns = footerColumns();
+  const companyLinks: FooterLink[] = [
+    { label: "Contact", href: "/contact" },
+    {
+      label: "7.Orbits",
+      href: siteConfig.links.organization,
+      external: true,
+    },
+  ];
+
   return (
-    <footer className="border-t border-line bg-surface-muted">
-      <div className="container-page py-14">
-        <div className="grid gap-14 sm:grid-cols-2 md:grid-cols-[1.5fr_repeat(3,minmax(0,1fr))] md:gap-8 lg:gap-14">
+    <footer className="relative isolate overflow-clip">
+      <AmbientGlow variant="bottom-corners" opacity={0.5} />
+      <div className="container-page relative pt-8 pb-14 md:pt-12 lg:pt-16">
+        <div className="grid gap-12 sm:grid-cols-2 md:grid-cols-[1.6fr_repeat(2,minmax(0,1fr))] md:gap-8 lg:gap-14">
           <div className="sm:col-span-2 md:col-span-1">
-            <a href="#top" aria-label="Splic — back to top">
+            <Link href="/" aria-label="Splic — home">
               <Wordmark withHandle markSize={20} />
-            </a>
-            <p className="mt-4 text-lg text-text-secondary">
+            </Link>
+            <p className="mt-4 max-w-xs text-md text-text-secondary">
+              {siteConfig.tagline}
+            </p>
+            <p className="mt-4 text-md text-text-tertiary">
               <a
                 href={siteConfig.links.organization}
                 target="_blank"
@@ -78,23 +82,21 @@ export function SiteFooter() {
                 {siteConfig.attribution}
               </a>
             </p>
-            <p className="mt-2 max-w-xs text-md text-text-tertiary">
-              An AI-assisted desktop video editor, in development.
-            </p>
           </div>
 
-          <FooterColumn title="Product" links={productLinks} />
-          <FooterColumn title="Resources" links={resourceLinks} />
+          {columns.map((column) => (
+            <FooterColumn
+              key={column.title}
+              title={column.title}
+              links={column.links}
+            />
+          ))}
           <FooterColumn title="Company" links={companyLinks} />
         </div>
 
-        <div className="mt-14 flex flex-col gap-4 border-t border-line pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-text-tertiary">
-            © 2026 Splic.co · A product by 7.Orbits
-          </p>
-          <p className="flex items-center gap-5 text-xs text-text-tertiary">
-            <span title="Coming soon">Privacy</span>
-            <span title="Coming soon">Terms</span>
+        <div className="mt-14 border-t border-border-subtle pt-8">
+          <p className="text-md text-text-tertiary">
+            © 2026 Splic.co · Splic.co — {siteConfig.attribution}
           </p>
         </div>
       </div>
