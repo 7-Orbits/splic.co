@@ -10,7 +10,7 @@ export function Hero() {
       id="hero"
       data-hero=""
       aria-labelledby="hero-heading"
-      className="relative isolate overflow-clip pt-24 pb-8 sm:pt-35 md:pb-12 lg:pb-16"
+      className="relative isolate overflow-clip pt-[calc(6rem+var(--nav-clearance))] pb-8 sm:pt-[calc(8.75rem+var(--nav-clearance))] md:pb-12 lg:pb-16"
     >
       <div
         data-glow-parallax=""
