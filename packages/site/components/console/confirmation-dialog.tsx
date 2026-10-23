@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef } from "react";
 import { X } from "lucide-react";
+import { useSmoothScroll } from "@/components/motion/smooth-scroll";
 import { Button } from "@/components/ui/button";
 
 interface ConfirmationDialogProps {
@@ -28,9 +29,12 @@ export function ConfirmationDialog({
   const titleId = useId();
   const descriptionId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
+  const { stop, start } = useSmoothScroll();
 
   useEffect(() => {
     if (!open) return;
+
+    stop();
 
     const previouslyFocused =
       document.activeElement instanceof HTMLElement
@@ -77,9 +81,10 @@ export function ConfirmationDialog({
       document.removeEventListener("keydown", onKeyDown);
       cancelAnimationFrame(raf);
       document.body.style.overflow = previousOverflow;
+      start();
       previouslyFocused?.focus();
     };
-  }, [open, onClose]);
+  }, [open, onClose, start, stop]);
 
   if (!open) return null;
 
