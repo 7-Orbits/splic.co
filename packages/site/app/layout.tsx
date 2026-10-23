@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { GeistMono } from "geist/font/mono";
+import { SmoothScroll } from "@/components/motion/smooth-scroll";
 import { siteDomain } from "@/content/release";
 import "./globals.css";
 
@@ -59,9 +60,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`js h-full antialiased ${inter.variable} ${GeistMono.variable}`}
-      data-scroll-behavior="smooth"
     >
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <script
           dangerouslySetInnerHTML={{
             __html: `setTimeout(function(){if(!window.__splicMotionReady){document.documentElement.classList.remove("js")}},2500)`,
@@ -86,7 +86,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        {children}
+        <SmoothScroll>{children}</SmoothScroll>
         <div className="grain-overlay" aria-hidden="true" />
       </body>
     </html>
