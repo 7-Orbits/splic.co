@@ -17,7 +17,7 @@ export function Wordmark({ withHandle = false, markSize = 18 }: WordmarkProps) {
         className="w-auto"
         style={{ height: markSize }}
       />
-      <span className="text-2xl tracking-[-0.01em] text-text-primary">
+      <span className="text-[15px] font-medium tracking-[-0.01em] text-text-primary">
         {withHandle ? (
           <>
             splic<span className="text-text-tertiary">.co</span>
