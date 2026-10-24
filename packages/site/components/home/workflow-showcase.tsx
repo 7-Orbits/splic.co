@@ -77,7 +77,7 @@ export function WorkflowShowcase() {
                 <li
                   key={stage.id}
                   data-stage-item=""
-                  className={`border-l-2 py-8 pl-6 transition-colors duration-200 lg:flex lg:min-h-[60vh] lg:flex-col lg:justify-center lg:py-10 ${
+                  className={`border-l-2 py-8 pl-6 transition-colors duration-200 lg:flex lg:min-h-[44vh] lg:flex-col lg:justify-center lg:py-10 ${
                     isActive
                       ? "border-accent-primary"
                       : "border-border-subtle"
@@ -108,7 +108,7 @@ export function WorkflowShowcase() {
           {/* Sticky preview on desktop; static block after the steps on
               mobile so nothing crowds a small viewport. The outer div is
               the grid item; stickiness lives on an inner wrapper. */}
-          <div className="mt-10 lg:mt-0">
+          <div className="mt-10 min-w-0 overflow-clip lg:mt-0">
             <div className="lg:sticky lg:top-28">
               <WorkspaceMock stage={activeStage} compact />
               <p className="mt-3 text-md text-text-tertiary">

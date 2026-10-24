@@ -457,21 +457,28 @@ export function WorkspaceMock({
   );
 }
 
+/**
+ * Callout anchors are tuned against the mock's internal geometry so a
+ * marker never sits on top of interface text at either preview width
+ * (80% initial or 100% expanded). They are decorative, so they only
+ * render at xl where that geometry is stable; narrower viewports get the
+ * readable list below instead.
+ */
 const callouts = [
   {
     number: "1",
     label: "The agent prompt",
-    className: "top-[20%] left-[75%]",
+    className: "top-[28%] left-[66%]",
   },
   {
     number: "2",
     label: "The timeline change",
-    className: "bottom-[14%] left-[24%]",
+    className: "top-[80.5%] left-[90%]",
   },
   {
     number: "3",
     label: "Ready for your review",
-    className: "top-[60%] left-[75%]",
+    className: "top-[60%] left-[91%]",
   },
 ];
 
@@ -494,7 +501,7 @@ export function AgentDemo() {
 
         {/* Numbered callouts (desktop overlay) */}
         <div
-          className="pointer-events-none absolute inset-0 hidden lg:block"
+          className="pointer-events-none absolute inset-0 hidden xl:block"
           aria-hidden="true"
         >
           {callouts.map((callout) => (
@@ -508,8 +515,9 @@ export function AgentDemo() {
         </div>
       </div>
 
-      {/* Callout list (mobile; readable description of the callouts) */}
-      <ol className="mt-5 flex flex-col gap-2 lg:hidden">
+      {/* Callout list (narrow viewports; readable description of the
+          callouts, shown wherever the overlay is not). */}
+      <ol className="mt-5 flex flex-col gap-2 xl:hidden">
         {callouts.map((callout) => (
           <li
             key={callout.number}

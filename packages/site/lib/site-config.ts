@@ -50,8 +50,8 @@ export const siteConfig = {
     docs,
     contact: contactEmail ? `mailto:${contactEmail}` : null,
     console: consoleUrl,
-    repository: "https://github.com/7-Orbits/splic.co",
-    organization: "https://github.com/7-Orbits",
+    repository: "https://7-orbits.com",
+    organization: "https://7-orbits.com",
   } satisfies SiteLinks,
 } as const;
 

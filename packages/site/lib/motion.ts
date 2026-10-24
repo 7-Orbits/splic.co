@@ -307,6 +307,13 @@ export function initHeroIntro(): Cleanup {
   };
 }
 
+/**
+ * Hero preview: kept fixed at normal full container width without scroll-based expansion.
+ */
+export function initHeroPreviewExpand(): Cleanup {
+  return noop;
+}
+
 /** Transparent nav at the top; glass tint after the page scrolls. */
 export function initNavbarMotion(): Cleanup {
   const nav = document.querySelector<HTMLElement>("[data-nav-intro]");

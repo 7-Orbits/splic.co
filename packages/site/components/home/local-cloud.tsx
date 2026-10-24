@@ -48,7 +48,7 @@ export function LocalCloud() {
 
           <div
             aria-hidden="true"
-            className="mx-6 h-px border-t border-dashed border-border-default lg:mx-0 lg:h-auto lg:w-12 lg:border-t-0 lg:border-l lg:border-dashed"
+            className="self-center mx-6 h-px w-auto border-t border-dashed border-border-default lg:mx-0 lg:h-12 lg:w-px lg:self-auto lg:border-t-0 lg:border-l lg:border-dashed"
           />
 
           <div className="glass flex-1 rounded-lg p-6 lg:rounded-l-none">

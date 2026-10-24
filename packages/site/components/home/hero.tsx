@@ -1,6 +1,6 @@
+import Image from "next/image";
 import { AmbientGlow } from "@/components/ui/ambient-glow";
 import { Button } from "@/components/ui/button";
-import { AgentDemo } from "./agent-demo";
 import { downloadHref } from "@/lib/site-config";
 import { platformMetadataLine } from "@/content/release";
 
@@ -12,15 +12,15 @@ export function Hero() {
       aria-labelledby="hero-heading"
       className="relative isolate overflow-clip pt-[calc(6rem+var(--nav-clearance))] pb-8 sm:pt-[calc(8.75rem+var(--nav-clearance))] md:pb-12 lg:pb-16"
     >
+      {/* One atmospheric light source in the lower portion of the hero,
+          washing up behind the product preview. A single source keeps the
+          dark page feeling lit rather than layered with competing glows. */}
       <div
         data-glow-parallax=""
         className="pointer-events-none absolute inset-0 -z-10"
       >
-        <div data-glow-hero="" className="absolute inset-0">
-          <AmbientGlow variant="top-center" opacity={0.75} />
-        </div>
         <div data-glow-hero="" data-glow-drift="" className="absolute inset-0">
-          <AmbientGlow variant="bottom-corners" />
+          <AmbientGlow variant="lower-center" />
         </div>
       </div>
       <div className="container-hero relative">
@@ -69,9 +69,26 @@ export function Hero() {
           </p>
         </div>
 
-        {/* Product preview — full content width, same left boundary. */}
-        <div data-hero-preview="" className="mt-18 w-full">
-          <AgentDemo />
+        {/* Product preview — fixed normal width while scrolling */}
+        <div data-hero-preview="" className="hero-preview mt-14 sm:mt-16 lg:mt-18">
+          <figure className="w-full">
+            <div className="glass-frame relative overflow-hidden rounded-xl border border-white/[0.08] bg-surface-primary" style={{ boxShadow: "var(--shadow-hero-preview)" }}>
+              <Image
+                src="/filmcraft-hero.png"
+                alt="Splic editing workspace preview"
+                width={2400}
+                height={1285}
+                priority
+                className="h-auto w-full object-cover"
+                sizes="(min-width: 1280px) 1200px, 100vw"
+              />
+              {/* Inset top highlight (Linear shadow.2). */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/[0.06]"
+              />
+            </div>
+          </figure>
         </div>
       </div>
     </section>

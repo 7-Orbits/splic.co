@@ -118,7 +118,7 @@ export default function ConsoleBillingPage() {
             id="available-plans-heading"
             className="text-md font-medium text-text-primary"
           >
-            Editing plans
+            Splic plans
           </h2>
           <p className="mt-0.5 text-sm text-text-tertiary">
             Every plan includes the full manual editor. Paid plans add agent
