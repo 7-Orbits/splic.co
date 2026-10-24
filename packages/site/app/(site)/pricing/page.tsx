@@ -73,7 +73,7 @@ export default function PricingPage() {
             <AmbientGlow variant="center" opacity={0.7} />
             <div
               data-reveal-group=""
-              className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
             >
               {editingPlans.map((plan) => (
                 <PlanCard key={plan.id} plan={plan} />
