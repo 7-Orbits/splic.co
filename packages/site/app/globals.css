@@ -84,6 +84,21 @@
   --shadow-surface: 0 8px 28px rgba(0, 0, 0, 0.22);
   --shadow-product: 0 20px 60px rgba(0, 0, 0, 0.28);
   --shadow-focus: 0 0 0 3px rgba(255, 255, 255, 0.32);
+  /* Hero preview: a soft off-white halo outside the frame border, kept
+     restrained so it reads as material depth, not a bright outline.
+     The 0.045 ring and 0.055 spread give just enough luminosity to lift
+     the frame edge without competing with the hero atmospheric glow. */
+  --shadow-hero-preview:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 0 2px rgba(255, 255, 255, 0.03),
+    0 0 36px 6px rgba(255, 255, 255, 0.055),
+    0 28px 80px rgba(0, 0, 0, 0.52),
+    0 8px 32px rgba(0, 0, 0, 0.36);
+  /* Mega-menu dropdown: dark charcoal, diffuse depth shadow. */
+  --shadow-mega-menu:
+    0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 8px 48px rgba(0, 0, 0, 0.55),
+    0 2px 12px rgba(0, 0, 0, 0.3);
 
   --breakpoint-nav: 768px;
 
@@ -160,7 +175,8 @@ body {
   overflow-x: clip;
 }
 
-/* Full-page warm haze behind the marketing site. */
+/* Full-page warm haze behind the marketing site. Kept deliberately quiet
+   and bottom-weighted so the hero's atmospheric light reads as the source. */
 .site-gradient {
   position: absolute;
   inset: 0;
@@ -168,24 +184,24 @@ body {
   pointer-events: none;
   background-image:
     radial-gradient(
-      90rem 40rem at 50% -12rem,
-      rgba(154, 130, 94, 0.1),
+      80rem 36rem at 50% -8rem,
+      rgba(154, 130, 94, 0.05),
       transparent 65%
     ),
     radial-gradient(
-      60rem 40rem at 100% 22%,
-      rgba(154, 130, 94, 0.035),
+      60rem 40rem at 100% 24%,
+      rgba(154, 130, 94, 0.025),
       transparent 70%
     ),
     radial-gradient(
-      60rem 40rem at 0% 58%,
-      rgba(154, 130, 94, 0.03),
+      60rem 40rem at 0% 62%,
+      rgba(154, 130, 94, 0.022),
       transparent 70%
     ),
     linear-gradient(
       180deg,
-      rgba(154, 130, 94, 0.04) 0%,
-      rgba(154, 130, 94, 0.012) 35%,
+      rgba(154, 130, 94, 0.03) 0%,
+      rgba(154, 130, 94, 0.008) 38%,
       rgba(154, 130, 94, 0.03) 100%
     );
 }
@@ -286,21 +302,49 @@ body {
 }
 
 .glass-nav[data-scrolled="true"] {
-  background-color: rgba(14, 15, 18, 0.65);
-  border-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(14, 14, 16, 0.7);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
-/* Full-screen menus and modals use a heavier blur and a more opaque tint. */
+/* Full-screen menus and modals use a heavier blur and a more opaque tint.
+   Neutral charcoal base (R≈G≈B) avoids any blue cast. */
 .glass-modal {
-  background-color: rgba(17, 19, 24, 0.82);
+  background-color: rgba(14, 14, 16, 0.88);
   background-image: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.05),
+    rgba(255, 255, 255, 0.04),
     rgba(255, 255, 255, 0)
   );
   -webkit-backdrop-filter: blur(20px) saturate(140%);
   backdrop-filter: blur(20px) saturate(140%);
   box-shadow: var(--glass-highlight), var(--glass-shadow);
+}
+
+/* Mega-menu dropdown: neutral dark charcoal glass, no tint. A very dark
+   semi-opaque base so the panel reads almost black against the page,
+   with just enough blur to maintain depth. True neutral charcoal base
+   (R≈G≈B) prevents any blue or warm cast. The shadow token uses
+   --shadow-mega-menu for a diffuse, dark perimeter cast. */
+.glass-mega-menu {
+  background-color: rgba(11, 11, 13, 0.94);
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.035) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  -webkit-backdrop-filter: blur(24px) saturate(120%);
+  backdrop-filter: blur(24px) saturate(120%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: var(--shadow-mega-menu);
+}
+
+/* At the nav breakpoint threshold (768–900px), clamp the mega-menu width so
+   it never exceeds the content column. Beyond 900px it keeps its natural
+   640px width and has plenty of room. */
+@media (min-width: 768px) and (max-width: 900px) {
+  .glass-mega-menu {
+    width: min(640px, calc(100vw - 48px));
+  }
 }
 
 /* Small surfaces nested inside glass: translucent fill, no second blur. */
@@ -317,6 +361,20 @@ body {
 .glass-chip {
   background-color: rgba(8, 9, 10, 0.62);
   box-shadow: var(--glass-highlight);
+}
+
+/* Footer surface: translucent neutral charcoal with backdrop blur.
+   Sits on the dark page base so the blur has meaningful context.
+   The inset top edge replaces the plain border-t with a glass highlight.
+   No tint — R≈G≈B in the base keeps the surface perceptually neutral. */
+.glass-footer {
+  background-color: rgba(11, 11, 13, 0.7);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  backdrop-filter: blur(20px) saturate(120%);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 -4px 32px rgba(0, 0, 0, 0.2);
 }
 
 .glass-field {
@@ -393,6 +451,27 @@ body {
   z-index: -10;
   pointer-events: none;
   filter: blur(56px);
+}
+
+/* Primary atmospheric light: a single broad, low bloom whose core sits in
+   the lower portion of the section, so it reads as light rising from below
+   the product preview rather than a blob (Linear reference).
+   The strong token is concentrated in a tight core that the opaque preview
+   mostly hides, so only its soft falloff reaches the gutters; the mid wash
+   carries the visible surround. */
+.ambient-light--lower-center {
+  background:
+    radial-gradient(
+      ellipse 900px 280px at 50% 72%,
+      var(--glow-white-strong),
+      var(--glow-fade) 58%
+    ),
+    radial-gradient(
+      ellipse 1900px 820px at 50% 78%,
+      var(--glow-white-mid),
+      var(--glow-fade) 74%
+    ),
+    linear-gradient(to top, var(--glow-white-soft), transparent 46%);
 }
 
 .ambient-light--bottom-corners {
@@ -493,9 +572,11 @@ body {
   .glass,
   .glass-frame,
   .glass-modal,
+  .glass-mega-menu,
   .glass-nav,
   .glass-nav[data-scrolled="true"],
-  .glass-field {
+  .glass-field,
+  .glass-footer {
     background-color: rgba(17, 19, 24, 0.92);
     background-image: none;
   }
@@ -511,7 +592,13 @@ body {
   margin-inline: auto;
   width: 100%;
   max-width: 1200px;
-  padding-inline: 20px;
+  padding-inline: 16px;
+}
+
+@media (min-width: 480px) {
+  .container-page {
+    padding-inline: 20px;
+  }
 }
 
 @media (min-width: 640px) {
@@ -802,6 +889,15 @@ body {
   width: 100%;
   max-width: var(--container-hero-max);
   padding-inline: 16px;
+}
+
+/* Hero product preview. Full container width by default (no-JS, reduced
+   motion and small screens). Desktop + motion narrows it to 80% and GSAP
+   scrubs it back to 100% as the visitor scrolls, so the expansion is a
+   progressive enhancement and never a layout dependency. */
+.hero-preview {
+  width: 100%;
+  margin-inline: auto;
 }
 
 @media (min-width: 640px) {
