@@ -11,6 +11,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/download",
     "/how-it-works",
     "/contact",
+    "/privacy",
+    "/terms",
+    "/refunds",
+    "/cookies",
   ];
 
   const now = new Date();
