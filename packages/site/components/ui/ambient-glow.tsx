@@ -1,6 +1,7 @@
 import type { CSSProperties, HTMLAttributes } from "react";
 
 export type AmbientGlowVariant =
+  | "lower-center"
   | "bottom-corners"
   | "top-center"
   | "side-left"
