@@ -36,7 +36,7 @@ export function ValueComparison() {
           data-reveal-group=""
           className="mt-12 grid max-w-[1040px] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"
         >
-          <div className="glass rounded-lg p-8">
+          <div className="glass rounded-lg p-5 sm:p-8">
             <h3 className="text-xl font-semibold tracking-[-0.01em] text-text-secondary">
               Editing by hand
             </h3>
@@ -53,7 +53,7 @@ export function ValueComparison() {
             </ul>
           </div>
 
-          <div className="glass glass-accent-top rounded-lg p-8">
+          <div className="glass glass-accent-top rounded-lg p-5 sm:p-8">
             <h3 className="text-xl font-semibold tracking-[-0.01em] text-text-primary">
               Editing with Splic
             </h3>
