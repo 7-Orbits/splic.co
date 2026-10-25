@@ -1,4 +1,4 @@
-import { primaryCtaHref, primaryCtaLabel } from "@/content/navigation";
+import { earlyAccessHref, primaryCtaHref, primaryCtaLabel } from "@/content/navigation";
 import { isEarlyAccess, releaseStage } from "@/content/release";
 
 export interface SiteLinks {
@@ -61,6 +61,13 @@ export const siteConfig = {
  */
 export const downloadHref = primaryCtaHref;
 
+/**
+ * Stage-aware destination for CTAs whose label is stage-driven
+ * (`primaryCtaLabel`). While awaiting launch the label is "Get early access",
+ * so those CTAs go to the waitlist page instead of /download.
+ */
+export const ctaHref = isEarlyAccess ? earlyAccessHref : primaryCtaHref;
+
 /** Site-wide primary CTA label, driven by release stage. */
 export const ctaLabel = primaryCtaLabel(releaseStage);
 
@@ -70,8 +77,11 @@ export const downloadPending = !download && !waitlist;
 /** Destination for the final call to action. */
 export const startHref = primaryCtaHref;
 
-/** Waitlist destination for early-access prompts, when configured. */
-export const waitlistHref = waitlist;
+/**
+ * Waitlist destination for early-access prompts. An env-configured external
+ * destination wins; otherwise CTAs route to the in-repo /early-access page.
+ */
+export const waitlistHref = waitlist ?? earlyAccessHref;
 
 /** Contact destination for sales enquiries, when configured. */
 export const contactHref = contactEmail ? `mailto:${contactEmail}` : null;

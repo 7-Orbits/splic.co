@@ -22,6 +22,8 @@
   --color-accent-primary-active: #d6d6d1;
   --color-accent-secondary: #8cbfcb;
   --color-accent-success: #80c9a0;
+  /* Bright success green for the waitlist confirmation (task-specified). */
+  --color-accent-success-strong: #4ade80;
   --color-accent-warning: #e7bc78;
   --color-accent-error: #f08a8a;
 
@@ -780,6 +782,106 @@ body {
   transform: none;
 }
 
+/* /early-access keeps the whole screen violet-free: the site-wide violet
+   :focus-visible ring is overridden with a near-white one for everything
+   inside the page (fields, links). Placed before .btn-auth so the button's
+   two-state monochrome rings below still win. */
+.early-access :focus-visible {
+  outline-color: var(--color-text-primary);
+}
+
+/* The success block takes programmatic focus after submit so focus isn't
+   lost when the form unmounts, but it is static content (the polite live
+   region already announces it) — no ring around the whole card. */
+.early-access .waitlist-success:focus-visible {
+  outline: none;
+}
+
+/* Auth provider buttons: black glass (translucent black + backdrop blur)
+   with a neutral light border — no drop shadows, no glow, no blue tint.
+   Hover inverts the surface to pure white with a near-black label; the
+   focus ring stays monochrome (currentColor) instead of the site-wide
+   violet, keeping this page's controls strictly neutral. */
+.btn-auth {
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--color-text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+  cursor: pointer;
+  translate: 0 0;
+}
+
+/* Smooth transition comes from the shared .btn transition tokens; the lift
+   matches .btn-secondary's glass hover (no shadow/glow — kept flat). */
+.btn-auth:hover {
+  background-color: #ffffff;
+  border-color: #ffffff;
+  color: #08090b;
+  box-shadow: none;
+  translate: 0 -3px;
+}
+
+.btn-auth:active {
+  background-color: #e4e4df;
+  border-color: #e4e4df;
+  color: #08090b;
+  box-shadow: none;
+  translate: 0 0;
+}
+
+/* Neutral focus treatment: confirmable in both states — near-white ring on
+   the dark surface, near-black ring on the white hover surface. */
+.btn-auth:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.btn-auth:hover:focus-visible {
+  outline: 2px solid #08090b;
+  outline-offset: 2px;
+}
+
+/* Neutral (blue-free) disabled state. */
+.btn-auth[aria-disabled="true"],
+.btn-auth:disabled {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #9a9a9a;
+  box-shadow: none;
+  cursor: not-allowed;
+  translate: none;
+  transform: none;
+}
+
+.btn-auth[aria-disabled="true"]:hover,
+.btn-auth:disabled:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #9a9a9a;
+  translate: none;
+}
+
+/* Auth screen entrance: a simple fade with an 8px rise, 0.5s. The global
+   prefers-reduced-motion rule collapses this to an instant, visible state. */
+@keyframes auth-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.auth-enter {
+  animation: auth-enter 0.5s cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+/* Disabled keeps the honest readable state from .btn / .btn-secondary. */
+
 .nav-link {
   position: relative;
   font-size: 13px;
@@ -1007,7 +1109,8 @@ body {
 
   .btn-primary:hover,
   .btn-secondary:hover,
-  .btn-hero-secondary:hover {
+  .btn-hero-secondary:hover,
+  .btn-auth:hover {
     translate: none;
   }
 }

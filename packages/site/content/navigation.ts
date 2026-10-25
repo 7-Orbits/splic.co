@@ -143,3 +143,10 @@ export function primaryCtaLabel(stage: ReleaseStage): string {
 
 /** Primary call-to-action destination. Always the real /download route. */
 export const primaryCtaHref = "/download";
+
+/**
+ * Early-access / waitlist destination used by every CTA labelled for
+ * early access (e.g. "Get early access"). The /download route stays reserved
+ * for real downloads while the product is awaiting launch.
+ */
+export const earlyAccessHref = "/early-access";

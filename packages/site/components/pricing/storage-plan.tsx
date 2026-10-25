@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { earlyAccessHref } from "@/content/navigation";
 import type { StorageTier } from "@/content/pricing";
 
 export function StoragePlan({ tier }: { tier: StorageTier }) {
@@ -30,7 +31,7 @@ export function StoragePlan({ tier }: { tier: StorageTier }) {
         Storage amount: {tier.quota ?? "announced at launch"}
       </p>
       <div className="mt-6">
-        <Button href="/download" variant="secondary" className="w-full">
+        <Button href={earlyAccessHref} variant="secondary" className="w-full">
           Get early access
         </Button>
       </div>

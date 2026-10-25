@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { primaryCtaHref, primaryCtaLabel } from "@/content/navigation";
-import { releaseStage } from "@/content/release";
+import { ctaHref, ctaLabel } from "@/lib/site-config";
 
 export default function NotFound() {
   return (
@@ -20,8 +19,8 @@ export default function NotFound() {
           <Button href="/" size="lg">
             Back to home
           </Button>
-          <Button href={primaryCtaHref} variant="secondary" size="lg">
-            {primaryCtaLabel(releaseStage)}
+          <Button href={ctaHref} variant="secondary" size="lg">
+            {ctaLabel}
           </Button>
         </div>
       </div>

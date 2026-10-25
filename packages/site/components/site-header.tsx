@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/components/auth/auth-provider";
 import {
   Film,
   Bot,
@@ -63,18 +64,38 @@ function MenuIcon({
 
 /** Console action: the in-repo preview, or an env-configured hosted Console. */
 function ConsoleAction({ className = "" }: { className?: string }) {
+  const { status } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const classes = `inline-flex items-center text-md leading-none text-text-secondary transition-colors duration-150 hover:text-text-primary ${className}`;
+
+  function handleClick() {
+    if (status === "authenticated") {
+      const consoleHref = siteConfig.links.console;
+      if (consoleHref?.startsWith("/")) {
+        router.push(consoleHref);
+      } else if (consoleHref) {
+        window.open(consoleHref, "_blank", "noopener,noreferrer");
+      }
+      return;
+    }
+
+    // Unauthenticated visitors are sent through the auth flow, returning to
+    // the current page as the safe post-auth destination.
+    const redirectTo = pathname && pathname !== "/" ? pathname : "/console";
+    router.push(`/auth?redirect=${encodeURIComponent(redirectTo)}`);
+  }
 
   if (consoleHref?.startsWith("/")) {
     return (
-      <Link href={consoleHref} className={classes}>
+      <Link href={consoleHref} className={classes} onClick={handleClick}>
         Console
       </Link>
     );
   }
 
   return (
-    <a href={consoleHref ?? undefined} className={classes}>
+    <a href={consoleHref ?? undefined} className={classes} onClick={handleClick}>
       Console
     </a>
   );
