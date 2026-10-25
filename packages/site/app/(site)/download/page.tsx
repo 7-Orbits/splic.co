@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { StateBlock } from "@/components/ui/state-block";
 import { availablePlatforms, isEarlyAccess, platforms } from "@/content/release";
-import { ctaLabel, downloadHref, waitlistHref } from "@/lib/site-config";
+import { ctaHref, ctaLabel, waitlistHref } from "@/lib/site-config";
 
 export const metadata: Metadata = {
   title: isEarlyAccess
@@ -69,7 +69,7 @@ export default function DownloadPage() {
                 </p>
               ) : null}
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button href={downloadHref} variant="secondary" size="lg">
+                <Button href={ctaHref} variant="secondary" size="lg">
                   {ctaLabel}
                 </Button>
                 <Button href="/how-it-works" variant="ghost" size="lg">
