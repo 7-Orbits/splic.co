@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { GeistMono } from "geist/font/mono";
 import { SmoothScroll } from "@/components/motion/smooth-scroll";
+import { AuthProvider } from "@/components/auth/auth-provider";
 import { siteDomain } from "@/content/release";
 import "./globals.css";
 
@@ -86,7 +87,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        <SmoothScroll>{children}</SmoothScroll>
+        <SmoothScroll>
+          <AuthProvider>{children}</AuthProvider>
+        </SmoothScroll>
         <div className="grain-overlay" aria-hidden="true" />
       </body>
     </html>
