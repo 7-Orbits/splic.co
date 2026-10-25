@@ -4,7 +4,7 @@ import { AmbientGlow } from "@/components/ui/ambient-glow";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { ScreenshotFrame } from "@/components/ui/screenshot-frame";
 import { CtaSection } from "@/components/ui/cta-section";
-import { ctaLabel, downloadHref } from "@/lib/site-config";
+import { ctaHref, ctaLabel } from "@/lib/site-config";
 import {
   exampleInstruction,
   howItWorksExpectation,
@@ -154,7 +154,7 @@ export default function HowItWorksPage() {
       <CtaSection
         heading="Bring a clip and a sentence."
         supporting="Splic isn't publicly downloadable yet. Join early access and we'll tell you when it is."
-        primary={{ label: ctaLabel, href: downloadHref }}
+        primary={{ label: ctaLabel, href: ctaHref }}
         secondary={{ label: "Explore features", href: "/features" }}
       />
     </main>
