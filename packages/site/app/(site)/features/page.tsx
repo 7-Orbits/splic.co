@@ -5,7 +5,7 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { ScreenshotFrame } from "@/components/ui/screenshot-frame";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CtaSection } from "@/components/ui/cta-section";
-import { ctaLabel, downloadHref } from "@/lib/site-config";
+import { ctaHref, ctaLabel } from "@/lib/site-config";
 import { featureLimits, features } from "@/content/features";
 
 export const metadata: Metadata = {
@@ -150,7 +150,7 @@ export default function FeaturesPage() {
       <CtaSection
         heading="Ready to try Splic?"
         supporting="Splic isn't publicly downloadable yet. Join early access and we'll tell you when it is."
-        primary={{ label: ctaLabel, href: downloadHref }}
+        primary={{ label: ctaLabel, href: ctaHref }}
         secondary={{ label: "How it works", href: "/how-it-works" }}
       />
     </main>
