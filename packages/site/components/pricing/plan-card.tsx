@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { earlyAccessHref } from "@/content/navigation";
 import type { EditingPlan } from "@/content/pricing";
 
 function formatPrice(plan: EditingPlan): string {
@@ -52,7 +53,11 @@ export function PlanCard({ plan }: PlanCardProps) {
       </ul>
       <div className="mt-6">
         {plan.cta === "download" || !showCheckout ? (
-          <Button href="/download" variant="secondary" className="w-full">
+          <Button
+            href={plan.cta === "download" ? "/download" : earlyAccessHref}
+            variant="secondary"
+            className="w-full"
+          >
             {plan.cta === "download" ? "Download Splic" : "Get early access"}
           </Button>
         ) : (
