@@ -1,6 +1,6 @@
 import { AmbientGlow } from "@/components/ui/ambient-glow";
 import { Button } from "@/components/ui/button";
-import { downloadHref } from "@/lib/site-config";
+import { ctaHref } from "@/lib/site-config";
 import { platformMetadataLine } from "@/content/release";
 
 export function FinalCta() {
@@ -55,7 +55,7 @@ export function FinalCta() {
               className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5"
             >
               <Button
-                href={downloadHref}
+                href={ctaHref}
                 size="lg"
                 className="w-full sm:w-auto"
               >
