@@ -15,7 +15,7 @@ import {
   pricingNotice,
   storageTiers,
 } from "@/content/pricing";
-import { contactHref, ctaLabel, downloadHref } from "@/lib/site-config";
+import { contactHref, ctaHref, ctaLabel } from "@/lib/site-config";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -166,7 +166,7 @@ export default function PricingPage() {
       <CtaSection
         heading="Start with the free editor."
         supporting="Splic isn't publicly downloadable yet. Join early access and we'll tell you when it is."
-        primary={{ label: ctaLabel, href: downloadHref }}
+        primary={{ label: ctaLabel, href: ctaHref }}
         secondary={{ label: "How it works", href: "/how-it-works" }}
       />
     </main>
