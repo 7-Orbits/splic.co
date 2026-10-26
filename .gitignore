@@ -2,3 +2,4 @@
 .env
 node_modules
 site_prompt.txt
+AGENT.md
