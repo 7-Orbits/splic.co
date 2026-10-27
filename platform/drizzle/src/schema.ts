@@ -843,9 +843,9 @@ export const tokenTransactions = pgTable(
     check(
       "token_transactions_amount_matches_type",
       sql`
-    (${t.transactionType} IN ('grant', 'release', 'refund', 'adjustment', 'unlock') AND ${t.amount} > 0)
-    OR (${t.transactionType} IN ('consume', 'lock', 'expire') AND ${t.amount} < 0)
-    OR (${t.transactionType} = 'carry_forward' AND ${t.amount} <> 0)
+    (${t.transactionType}::text IN ('grant', 'release', 'refund', 'adjustment', 'unlock') AND ${t.amount} > 0)
+    OR (${t.transactionType}::text IN ('consume', 'lock', 'expire') AND ${t.amount} < 0)
+    OR (${t.transactionType}::text = 'carry_forward' AND ${t.amount} <> 0)
   `,
     ),
   ],
