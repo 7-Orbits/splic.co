@@ -79,7 +79,7 @@ ALTER TABLE "token_lots" ADD CONSTRAINT "token_lots_lock_consistent" CHECK (
 ALTER TABLE "token_lots" ADD CONSTRAINT "token_lots_lock_window_not_expired" CHECK ("token_lots"."locked_at" IS NULL OR "token_lots"."expires_at" IS NULL OR "token_lots"."expires_at" >= "token_lots"."lock_expires_at");--> statement-breakpoint
 ALTER TABLE "token_lots" ADD CONSTRAINT "token_lots_token_range" CHECK ("token_lots"."original_tokens" >= 0 AND "token_lots"."remaining_tokens" >= 0 AND "token_lots"."locked_tokens" >= 0 AND "token_lots"."remaining_tokens" + "token_lots"."locked_tokens" <= "token_lots"."original_tokens");--> statement-breakpoint
 ALTER TABLE "token_transactions" ADD CONSTRAINT "token_transactions_amount_matches_type" CHECK (
-    ("token_transactions"."transaction_type" IN ('grant', 'release', 'refund', 'adjustment', 'unlock') AND "token_transactions"."amount" > 0)
-    OR ("token_transactions"."transaction_type" IN ('consume', 'lock', 'expire') AND "token_transactions"."amount" < 0)
-    OR ("token_transactions"."transaction_type" = 'carry_forward' AND "token_transactions"."amount" <> 0)
+    ("token_transactions"."transaction_type"::text IN ('grant', 'release', 'refund', 'adjustment', 'unlock') AND "token_transactions"."amount" > 0)
+    OR ("token_transactions"."transaction_type"::text IN ('consume', 'lock', 'expire') AND "token_transactions"."amount" < 0)
+    OR ("token_transactions"."transaction_type"::text = 'carry_forward' AND "token_transactions"."amount" <> 0)
   );
