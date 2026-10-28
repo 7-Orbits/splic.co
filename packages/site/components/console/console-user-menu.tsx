@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   LifeBuoy,
@@ -9,6 +10,7 @@ import {
   Settings,
   type LucideIcon,
 } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 import type { ConsoleAccount } from "@/lib/console/types";
 
 interface ConsoleUserMenuProps {
@@ -16,22 +18,52 @@ interface ConsoleUserMenuProps {
   onNavigate?: () => void;
 }
 
-interface MenuLink {
+interface MenuItem {
   label: string;
-  href: string;
+  href?: string;
   icon: LucideIcon;
+  onClick?: () => void;
+  isAction?: boolean;
 }
 
-const menuLinks: MenuLink[] = [
+const menuLinks: MenuItem[] = [
   { label: "Settings", href: "/console/settings", icon: Settings },
   { label: "Help & Support", href: "/console/help", icon: LifeBuoy },
 ];
 
 export function ConsoleUserMenu({ account, onNavigate }: ConsoleUserMenuProps) {
+  const router = useRouter();
+  const { user, status, signOut } = useAuth();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const itemRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const itemRefs = useRef<Array<HTMLElement | null>>([]);
+
+  const isAuthenticated = status === "authenticated";
+  const displayName =
+    isAuthenticated && (user?.name || user?.email)
+      ? user?.name || user?.email
+      : account.name;
+  const displayEmail =
+    isAuthenticated && user?.email ? user.email : account.email;
+
+  function getInitials(name?: string | null, email?: string | null): string {
+    if (name) {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+      }
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    if (email) {
+      return email[0].toUpperCase();
+    }
+    return account.initials;
+  }
+
+  const displayInitials = isAuthenticated
+    ? getInitials(user?.name, user?.email)
+    : account.initials;
 
   useEffect(() => {
     if (!open) return;
@@ -58,15 +90,24 @@ export function ConsoleUserMenu({ account, onNavigate }: ConsoleUserMenuProps) {
 
   function focusItem(index: number) {
     const items = itemRefs.current.filter(
-      (item): item is HTMLAnchorElement => item !== null,
+      (item): item is HTMLElement => item !== null,
     );
     if (items.length === 0) return;
     items[(index + items.length) % items.length]?.focus();
   }
 
-  const items = [
+  const handleSignOut = async () => {
+    setOpen(false);
+    onNavigate?.();
+    await signOut();
+    router.push("/auth");
+  };
+
+  const items: MenuItem[] = [
     ...menuLinks,
-    { label: "Exit preview", href: "/", icon: LogOut },
+    isAuthenticated
+      ? { label: "Sign out", icon: LogOut, isAction: true, onClick: handleSignOut }
+      : { label: "Exit preview", href: "/", icon: LogOut, isAction: true },
   ];
 
   return (
@@ -87,14 +128,14 @@ export function ConsoleUserMenu({ account, onNavigate }: ConsoleUserMenuProps) {
         className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-white/[0.05]"
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border-default bg-surface-elevated text-xs font-semibold text-text-primary">
-          {account.initials}
+          {displayInitials}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-md font-medium text-text-primary">
-            {account.name}
+            {displayName}
           </span>
           <span className="block truncate text-xs text-text-tertiary">
-            {account.email}
+            {displayEmail}
           </span>
         </span>
         <ChevronDown
@@ -113,10 +154,10 @@ export function ConsoleUserMenu({ account, onNavigate }: ConsoleUserMenuProps) {
           onKeyDown={(event) => {
             if (event.key === "ArrowDown") {
               event.preventDefault();
-              focusItem(itemRefs.current.indexOf(document.activeElement as HTMLAnchorElement) + 1);
+              focusItem(itemRefs.current.indexOf(document.activeElement as HTMLElement) + 1);
             } else if (event.key === "ArrowUp") {
               event.preventDefault();
-              focusItem(itemRefs.current.indexOf(document.activeElement as HTMLAnchorElement) - 1);
+              focusItem(itemRefs.current.indexOf(document.activeElement as HTMLElement) - 1);
             } else if (event.key === "Home") {
               event.preventDefault();
               focusItem(0);
@@ -128,21 +169,38 @@ export function ConsoleUserMenu({ account, onNavigate }: ConsoleUserMenuProps) {
         >
           {items.map((item, index) => {
             const Icon = item.icon;
-            const isExit = item.href === "/";
+            if (item.onClick) {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  ref={(node) => {
+                    itemRefs.current[index] = node;
+                  }}
+                  role="menuitem"
+                  onClick={item.onClick}
+                  className="flex w-full cursor-pointer items-center gap-2.5 border-t border-border-subtle px-3 py-2 text-left text-md text-text-secondary transition-colors hover:bg-surface-interactive"
+                >
+                  <Icon aria-hidden="true" className="h-4 w-4" strokeWidth={1.8} />
+                  {item.label}
+                </button>
+              );
+            }
+
             return (
               <Link
-                key={item.href}
+                key={item.label}
                 ref={(node) => {
                   itemRefs.current[index] = node;
                 }}
                 role="menuitem"
-                href={item.href}
+                href={item.href || "/"}
                 onClick={() => {
                   setOpen(false);
                   onNavigate?.();
                 }}
                 className={`flex items-center gap-2.5 px-3 py-2 text-md transition-colors hover:bg-surface-interactive ${
-                  isExit
+                  item.isAction
                     ? "border-t border-border-subtle text-text-secondary"
                     : "text-text-primary"
                 }`}
