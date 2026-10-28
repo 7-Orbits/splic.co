@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "drizzle:generate": "pnpm --filter @splic/drizzle exec drizzle-kit generate",
     "drizzle:migrate": "pnpm --filter @splic/drizzle exec drizzle-kit migrate",
-    "studio": "pnpm --filter @splic/drizzle exec drizzle-kit studio"
+    "studio": "pnpm --filter @splic/drizzle exec drizzle-kit studio",
+    "site" : "pnpm --filter @splic/site exec pnpm dev"
   },
   "keywords": [],
   "author": "",
