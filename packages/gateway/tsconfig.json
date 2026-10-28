@@ -12,6 +12,11 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
+    // Gateway sources run directly on Node (type stripping) and import
+    // relative modules with explicit `.ts` specifiers; tsc rewrites them to
+    // `.js` when emitting declarations.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true
