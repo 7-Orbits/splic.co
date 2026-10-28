@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
 import { Wordmark } from "@/components/wordmark";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useAuthErrorHandler } from "@/hooks/use-auth-error-handler";
 import type { AuthProviderId, AuthProviderSummary } from "@/lib/auth/providers";
 
 interface SignInCardProps {
   /** Safe, validated post-auth destination. Defaults to /console. */
   redirectTo: string;
-  /** OAuth error code returned by the callback, if any. */
-  error: string | null;
+  /** OAuth error code returned by the callback, if any (deprecated in favor of toast notification). */
+  error?: string | null;
   /** Server-computed provider summaries so buttons render with the correct
    * configured state in SSR instead of popping in after hydration. */
   initialProviders?: AuthProviderSummary[];
@@ -68,10 +70,13 @@ function ProviderIcon({
 
 export function SignInCard({
   redirectTo,
-  error,
   initialProviders,
 }: SignInCardProps) {
-  const { providers: sessionProviders, signIn } = useAuth();
+  const router = useRouter();
+  const { status, providers: sessionProviders, signIn } = useAuth();
+
+  // Handle URL auth error query parameters and toasts cleanly
+  useAuthErrorHandler();
   // Prefer the live session data; fall back to the server-rendered summaries
   // so the very first paint (and SSR HTML) shows both provider buttons.
   const providers = sessionProviders.length
@@ -81,8 +86,14 @@ export function SignInCard({
     null,
   );
 
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace(redirectTo);
+    }
+  }, [status, redirectTo, router]);
+
   const handleSignIn = (providerId: AuthProviderId) => {
-    if (pendingProvider || error) return;
+    if (pendingProvider) return;
     const provider = providers.find((entry) => entry.id === providerId);
     if (!provider?.configured) return;
     setPendingProvider(providerId);
@@ -93,7 +104,7 @@ export function SignInCard({
     <div className="flex w-full flex-col items-center text-center">
       <Wordmark markSize={30} />
       <h1 className="mt-6 text-2xl font-semibold tracking-[-0.02em] text-text-primary">
-        Welcome to Splic
+        Welcome back to Splic
       </h1>
 
       <div className="mt-8 flex w-full flex-col gap-3">
@@ -123,15 +134,6 @@ export function SignInCard({
           </Button>
         ))}
       </div>
-
-      {error ? (
-        <p
-          role="alert"
-          className="mt-4 text-center text-[13px] leading-[1.5] text-accent-error"
-        >
-          {error}
-        </p>
-      ) : null}
 
       <p className="mt-5 w-full text-center text-sm leading-[1.6] text-text-secondary">
         By continuing, you agree to Splic&apos;s{" "}
