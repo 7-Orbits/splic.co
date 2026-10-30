@@ -1,0 +1,3 @@
+[submodule "vendors/filmcraft"]
+	path = vendors/filmcraft
+	url = https://github.com/storytold/filmcraft.git
