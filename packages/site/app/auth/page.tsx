@@ -5,10 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { AmbientGlow } from "@/components/ui/ambient-glow";
 import { SignInCard } from "@/components/auth/sign-in-card";
 import { safeAuthRedirect } from "@/lib/auth/redirect";
-import {
-  authErrorMessage,
-  getAuthProviderSummaries,
-} from "@/lib/auth/providers";
+import { getAuthProviderSummaries } from "@/lib/auth/providers";
 
 /**
  * Dedicated sign-in screen. Intentionally rendered outside the `(site)` route
@@ -18,7 +15,7 @@ import {
 export const metadata: Metadata = {
   title: "Sign in",
   description:
-    "Sign in to the Splic console with Google or Microsoft. New to Splic? Continue with an identity provider to create your account.",
+    "Sign in to the Splic console with your registered Google account. New to Splic? Accounts are created in the Splic desktop application.",
 };
 
 interface AuthPageProps {
@@ -39,12 +36,10 @@ async function AuthScreen({
 }) {
   const params = await searchParams;
   const redirectTo = safeAuthRedirect(firstParamValue(params.redirect) ?? undefined);
-  const error = authErrorMessage(firstParamValue(params.error));
 
   return (
     <SignInCard
       redirectTo={redirectTo}
-      error={error}
       initialProviders={getAuthProviderSummaries()}
     />
   );

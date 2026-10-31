@@ -8,43 +8,73 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AuthProviderId, AuthProviderSummary } from "@/lib/auth/providers";
+import {
+  gatewayUrl,
+  type AuthProviderId,
+  type AuthProviderSummary,
+  type AuthUser,
+} from "@/lib/auth/providers";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
 interface AuthContextValue {
   status: AuthStatus;
+  /** Current Gateway user profile once authenticated, otherwise null. */
+  user: AuthUser | null;
   providers: AuthProviderSummary[];
-  /** Start the OAuth sign-in / sign-up flow for a provider. */
+  /** Start the Gateway's Google sign-in flow (login-only — no signup). */
   signIn: (providerId: AuthProviderId, redirectTo?: string) => void;
+  /** Revoke the Gateway session and drop local auth state. */
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+interface MeResponse {
+  authenticated?: boolean;
+  user?: AuthUser;
+}
+
+interface ProvidersResponse {
+  providers?: AuthProviderSummary[];
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [providers, setProviders] = useState<AuthProviderSummary[]>([]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadSession() {
+      const base = gatewayUrl();
       try {
-        const response = await fetch("/api/auth/session", {
-          credentials: "same-origin",
-        });
-        const data = (await response.json().catch(() => null)) as {
-          authenticated?: boolean;
-          providers?: AuthProviderSummary[];
-        } | null;
+        const [meResponse, providersResponse] = await Promise.all([
+          fetch(`${base}/auth/me`, { credentials: "include" }),
+          fetch(`${base}/auth/providers`, { credentials: "include" }),
+        ]);
+
+        const me = (await meResponse.json().catch(() => null)) as MeResponse | null;
+        const providerData = (await providersResponse.json().catch(() => null)) as
+          | ProvidersResponse
+          | null;
 
         if (cancelled) return;
-        setStatus(data?.authenticated ? "authenticated" : "unauthenticated");
-        if (Array.isArray(data?.providers)) {
-          setProviders(data.providers);
+
+        const authenticated =
+          meResponse.ok && me?.authenticated === true && Boolean(me.user);
+        setStatus(authenticated ? "authenticated" : "unauthenticated");
+        setUser(authenticated && me?.user ? me.user : null);
+        if (Array.isArray(providerData?.providers)) {
+          setProviders(providerData.providers);
         }
       } catch {
-        if (!cancelled) setStatus("unauthenticated");
+        // Gateway unreachable: treat as signed out — never assume a session.
+        if (!cancelled) {
+          setStatus("unauthenticated");
+          setUser(null);
+        }
       }
     }
 
@@ -57,18 +87,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     (providerId: AuthProviderId, redirectTo?: string) => {
-      const signInUrl = new URL(
-        `/api/auth/signin/${providerId}`,
-        window.location.origin,
-      );
+      // Only Google is wired: the Gateway owns the flow and the Microsoft
+      // button stays disabled until its credentials are configured.
+      if (providerId !== "google") return;
+      const signInUrl = new URL("/auth/google", gatewayUrl());
       if (redirectTo) signInUrl.searchParams.set("redirect", redirectTo);
       window.location.href = signInUrl.toString();
     },
     [],
   );
 
+  const signOut = useCallback(async () => {
+    try {
+      await fetch(`${gatewayUrl()}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Network failure: the session cookie lives on the Gateway origin and
+      // cannot be cleared from here; /auth/me re-syncs on the next load.
+    }
+    setStatus("unauthenticated");
+    setUser(null);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ status, providers, signIn }}>
+    <AuthContext.Provider value={{ status, user, providers, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

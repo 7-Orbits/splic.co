@@ -58,6 +58,14 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "expired",
   "paused",
 ]);
+/**
+ * Capability mode of a Splic plan:
+ * - `free`: editor only, no agent access.
+ * - `byom`: agent + free plugins, user-supplied model; zero Splic-funded tokens.
+ * - `agent`: token-funded paid agent plan (Basic / Standard / Premium /
+ *   future Premium+).
+ */
+export const planTypeEnum = pgEnum("plan_type", ["free", "byom", "agent"]);
 export const tokenLotTypeEnum = pgEnum("token_lot_type", [
   "monthly_allowance",
   "purchased_topup",
@@ -68,12 +76,28 @@ export const usageStatusEnum = pgEnum("usage_status", [
   "failed",
   "reversed",
 ]);
+/**
+ * Ledger entry types. Sign rules are enforced by
+ * `token_transactions_amount_matches_type`:
+ * - positive: `grant`, `release`, `refund`, `adjustment`, `unlock`
+ * - negative: `consume`, `lock`, `expire`
+ * - either sign: `carry_forward` (negative on the source lot, positive on the
+ *   destination lot; paired rows share `referenceKey`).
+ *
+ * `lock` moves tokens from `tokenLots.remainingTokens` into
+ * `tokenLots.lockedTokens`; `unlock` moves them back; `expire` removes
+ * tokens from the locked bucket when the 30-day reactivation window closes.
+ */
 export const tokenTransactionTypeEnum = pgEnum("token_transaction_type", [
   "grant",
   "consume",
   "release",
   "refund",
   "adjustment",
+  "lock",
+  "unlock",
+  "expire",
+  "carry_forward",
 ]);
 export const storageObjectStatusEnum = pgEnum("storage_object_status", [
   "pending",
@@ -197,6 +221,18 @@ export const authSessions = pgTable(
   ],
 );
 
+/**
+ * Splic plan catalogue rows. All commercial configuration (price, currency,
+ * token allowance, included storage, paid-plugin limit) lives in row data —
+ * nothing product-related is hardcoded in database logic.
+ *
+ * NOTE ON DEFAULTS: the defaults on `planType`, `grantsAgentAccess`,
+ * `usesByom`, `storageQuotaBytes`, `paidPluginLimit` and `isPubliclyVisible`
+ * exist ONLY so `ALTER TABLE` succeeds on rows written before these columns
+ * existed. Every application-level plan insert or seed path MUST set
+ * `planType`, `grantsAgentAccess` and `usesByom` explicitly and must not
+ * rely on the column defaults.
+ */
 export const plans = pgTable(
   "plans",
   {
@@ -210,6 +246,14 @@ export const plans = pgTable(
     monthlyTokenAllowance: bigint("monthly_token_allowance", {
       mode: "number",
     }).notNull(),
+    planType: planTypeEnum("plan_type").notNull().default("agent"),
+    grantsAgentAccess: boolean("grants_agent_access").notNull().default(true),
+    usesByom: boolean("uses_byom").notNull().default(false),
+    storageQuotaBytes: bigint("storage_quota_bytes", { mode: "number" })
+      .notNull()
+      .default(0),
+    paidPluginLimit: integer("paid_plugin_limit").notNull().default(0),
+    isPubliclyVisible: boolean("is_publicly_visible").notNull().default(true),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -221,6 +265,23 @@ export const plans = pgTable(
     check(
       "plans_token_allowance_nonnegative",
       sql`${t.monthlyTokenAllowance} >= 0`,
+    ),
+    check("plans_storage_quota_nonnegative", sql`${t.storageQuotaBytes} >= 0`),
+    check(
+      "plans_paid_plugin_limit_nonnegative",
+      sql`${t.paidPluginLimit} >= 0`,
+    ),
+    check(
+      "plans_type_capability_consistent",
+      sql`
+    (${t.planType} = 'free' AND ${t.grantsAgentAccess} = false AND ${t.usesByom} = false)
+    OR (${t.planType} = 'byom' AND ${t.grantsAgentAccess} = true AND ${t.usesByom} = true)
+    OR (${t.planType} = 'agent' AND ${t.grantsAgentAccess} = true AND ${t.usesByom} = false)
+  `,
+    ),
+    check(
+      "plans_byom_zero_allowance",
+      sql`${t.usesByom} = false OR ${t.monthlyTokenAllowance} = 0`,
     ),
   ],
 );
@@ -293,6 +354,78 @@ export const subscriptionPeriods = pgTable(
   ],
 );
 
+/**
+ * Weekly release schedule for a subscription period's token allowance.
+ *
+ * Exactly-once semantics (webhook retries, scheduled jobs and user-triggered
+ * early unlocks all funnel through the same guarded update):
+ * 1. `unique(subscriptionPeriodId, weekIndex)` — one schedule row per week;
+ * 2. release is `UPDATE ... WHERE releasedAt IS NULL` (0 rows = already
+ *    released, caller aborts);
+ * 3. the paired `token_transactions` row uses the unique key
+ *    `weekly-grant:{grantId}`.
+ *
+ * All three writes (schedule row, token lot, ledger entry) commit in one
+ * database transaction, so a grant is either fully applied or not at all.
+ *
+ * `carryInTokens` records unused tokens rolling into this grant (they already
+ * sit in the lot's `remainingTokens`; it is informational for audit/display).
+ *
+ * Over-credit protection: every release increments
+ * `tokenLots.remainingTokens`, which `token_lots_token_range` caps at the lot
+ * ceiling (allowance + carry-in + any out-of-schedule credits) — so releases
+ * cannot push a period past that ceiling even if schedule rows were
+ * misconfigured. The complementary schedule
+ * invariant `SUM(baseTokens) <= subscriptionPeriods.tokenAllowance` is
+ * cross-table and therefore cannot be a CHECK; it is an application-level
+ * schedule-creation invariant that must hold when the rows are inserted.
+ *
+ * Limiting early unlock to the immediately following week
+ * (`weekIndex = current + 1`) is a row-to-row predicate that a CHECK cannot
+ * express — it is enforced by application logic, not invented here.
+ */
+export const subscriptionPeriodGrants = pgTable(
+  "subscription_period_grants",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    subscriptionPeriodId: uuid("subscription_period_id")
+      .notNull()
+      .references(() => subscriptionPeriods.id, { onDelete: "restrict" }),
+    weekIndex: integer("week_index").notNull(),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+    baseTokens: bigint("base_tokens", { mode: "number" }).notNull(),
+    carryInTokens: bigint("carry_in_tokens", { mode: "number" })
+      .notNull()
+      .default(0),
+    releasedAt: timestamp("released_at", { withTimezone: true }),
+    releasedEarly: boolean("released_early").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("subscription_period_grants_period_week_unique").on(
+      t.subscriptionPeriodId,
+      t.weekIndex,
+    ),
+    index("subscription_period_grants_pending_idx")
+      .on(t.scheduledAt)
+      .where(sql`${t.releasedAt} IS NULL`),
+    check(
+      "subscription_period_grants_week_nonnegative",
+      sql`${t.weekIndex} >= 0`,
+    ),
+    check(
+      "subscription_period_grants_tokens_nonnegative",
+      sql`${t.baseTokens} >= 0 AND ${t.carryInTokens} >= 0`,
+    ),
+    check(
+      "subscription_period_grants_early_requires_release",
+      sql`${t.releasedEarly} = false OR ${t.releasedAt} IS NOT NULL`,
+    ),
+  ],
+);
+
 export const storagePlans = pgTable(
   "storage_plans",
   {
@@ -354,6 +487,28 @@ export const storageSubscriptions = pgTable(
   ],
 );
 
+/**
+ * Catalog categories for plugins (e.g. Gaming, Podcast, Cinematic).
+ * Lookup table so category names/slugs are shared across plugins instead of
+ * duplicated per row.
+ */
+export const pluginCategories = pgTable(
+  "plugin_categories",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique("plugin_categories_slug_unique").on(t.slug),
+    check("plugin_categories_slug_not_blank", sql`length(trim(${t.slug})) > 0`),
+    check("plugin_categories_name_not_blank", sql`length(trim(${t.name})) > 0`),
+  ],
+);
+
 export const plugins = pgTable(
   "plugins",
   {
@@ -361,12 +516,31 @@ export const plugins = pgTable(
     slug: text("slug").notNull(),
     name: text("name").notNull(),
     version: text("version").notNull(),
+    description: text("description"),
+    isPaid: boolean("is_paid").notNull().default(false),
+    priceMinor: bigint("price_minor", { mode: "number" }),
+    currency: char("currency", { length: 3 }),
+    pluginCategoryId: uuid("plugin_category_id").references(
+      () => pluginCategories.id,
+      { onDelete: "restrict" },
+    ),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (t) => [unique("plugins_slug_unique").on(t.slug)],
+  (t) => [
+    unique("plugins_slug_unique").on(t.slug),
+    index("plugins_category_idx").on(t.pluginCategoryId),
+    check(
+      "plugins_free_price_null",
+      sql`${t.isPaid} = true OR (${t.priceMinor} IS NULL AND ${t.currency} IS NULL)`,
+    ),
+    check(
+      "plugins_paid_price_positive",
+      sql`${t.isPaid} = false OR (${t.priceMinor} > 0 AND ${t.currency} IS NOT NULL)`,
+    ),
+  ],
 );
 
 export const orders = pgTable(
@@ -453,6 +627,82 @@ export const orderItems = pgTable(
   ],
 );
 
+/**
+ * Token balances.
+ *
+ * Bucket semantics:
+ * - `originalTokens` — lifetime ceiling of tokens credited into the lot:
+ *   the period allowance reserved at creation (weekly releases draw down
+ *   toward it), plus any carry-in credited at renewal, plus any later
+ *   out-of-schedule credit (`adjustment`, unscheduled `grant`), each raised
+ *   by exactly the credited amount. Two ledger kinds NEVER raise the
+ *   ceiling: scheduled releases (already reserved in it) and consumption
+ *   reversals (`refund`/`release`, netted in the identity below).
+ * - `remainingTokens` — spendable balance.
+ * - `lockedTokens` — subscription tokens moved out of spendable when paid
+ *   access ends (`lock`), returned on reactivation within the 30-day window
+ *   (`unlock`), destroyed when the window closes (`expire`).
+ *
+ * Full reconciliation identity (spans token_lots + subscription_period_grants
+ * + token_transactions, so it cannot live in a CHECK — Postgres CHECKs may
+ * not reference other tables; enforce in the same database transaction as
+ * each mutation and audit with):
+ *
+ *   originalTokens = remainingTokens + lockedTokens
+ *                  + (sum(consume) - sum(refund) - sum(release))
+ *                  + sum(|expire|) + sum(|carry_forward < 0|)
+ *                  + sum(base_tokens of unreleased schedule rows)
+ *
+ * Derivation notes — the signs above are final; do NOT "fix" them by adding
+ * terms:
+ * - `lock`/`unlock` have no term: they move tokens between
+ *   `remainingTokens` and `lockedTokens`, both of which appear on the
+ *   right-hand side with coefficient +1, so the move cancels algebraically.
+ *   Their ledger rows are bucket-move audit records, not net flows.
+ * - `grant` has no term: scheduled grants are already reserved in the
+ *   ceiling and are released into `remainingTokens` by draining the
+ *   unreleased term; out-of-schedule grants are absorbed by raising
+ *   `originalTokens` (assumption 3).
+ * - `carry_forward > 0` has no term: the destination balance was
+ *   initialized with the carry-in (assumption 2).
+ * - The identity itself holds unconditionally. Its agreement with the CHECK
+ *   `token_lots_token_range` additionally requires
+ *   `sum(refund) + sum(release) <= sum(consume)` per lot — consumption
+ *   reversals must never exceed prior consumption. That is a cross-row
+ *   application invariant and cannot be expressed as a CHECK.
+ *
+ * Mutation assumptions — every committed state must satisfy all five, or the
+ * identity above silently breaks:
+ *
+ * 1. Each lot is created together with its complete weekly grant schedule
+ *    (`subscription_period_grants` rows) in one database transaction. Before
+ *    the schedule exists the unreleased term is 0 while the ceiling is not,
+ *    so partial creation leaves the identity unsatisfiable.
+ * 2. Carry-in at renewal: the destination lot is initialized with
+ *    `originalTokens = newAllowance + carryIn` and
+ *    `remainingTokens = carryIn`, and the source lot's balance is debited by
+ *    `carryIn` (guarded by `remainingTokens >= carryIn`), all in one database
+ *    transaction. The paired `carry_forward` `:out`/`:in` ledger entries
+ *    (shared `referenceKey`) are audit records of that already-applied
+ *    transfer, NOT additional balance mutations: applying them to the balance
+ *    columns again would double-count.
+ * 3. Any out-of-schedule credit (e.g. `adjustment`, unscheduled `grant`)
+ *    must increase `originalTokens` by the same amount as the balance credit
+ *    in the same database transaction. Scheduled releases and consumption
+ *    reversals must not increase the ceiling.
+ * 4. Expiry always debits the locked bucket: paid-access end must `lock`
+ *    first, and at the 30-day deadline the `lockedTokens` decrement and the
+ *    `expire` ledger entry commit in the same database transaction. An
+ *    `expiresAt` timestamp alone does NOT expire tokens automatically.
+ * 5. The identity is a ledger/column invariant; `expiresAt` is a date filter
+ *    applied on top of it and moves no balances by itself passing.
+ *
+ * The CHECK below enforces the same-row part of that identity. Purchased
+ * top-up lots (`lot_type = 'purchased_topup'`) are never touched by
+ * subscription renewal or expiry: they carry no subscription period, no
+ * mandatory expiry, and a positive top-up balance never grants agent access
+ * (access is derived from subscription state, not from balances).
+ */
 export const tokenLots = pgTable(
   "token_lots",
   {
@@ -470,6 +720,11 @@ export const tokenLots = pgTable(
     }),
     originalTokens: bigint("original_tokens", { mode: "number" }).notNull(),
     remainingTokens: bigint("remaining_tokens", { mode: "number" }).notNull(),
+    lockedTokens: bigint("locked_tokens", { mode: "number" })
+      .notNull()
+      .default(0),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockExpiresAt: timestamp("lock_expires_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -481,9 +736,29 @@ export const tokenLots = pgTable(
     index("token_lots_spendable_idx")
       .on(t.userId, t.expiresAt, t.createdAt)
       .where(sql`${t.remainingTokens} > 0`),
+    index("token_lots_lock_deadline_idx")
+      .on(t.lockExpiresAt)
+      .where(sql`${t.lockedAt} IS NOT NULL`),
     check(
       "token_lots_token_range",
-      sql`${t.originalTokens} >= 0 AND ${t.remainingTokens} >= 0 AND ${t.remainingTokens} <= ${t.originalTokens}`,
+      sql`${t.originalTokens} >= 0 AND ${t.remainingTokens} >= 0 AND ${t.lockedTokens} >= 0 AND ${t.remainingTokens} + ${t.lockedTokens} <= ${t.originalTokens}`,
+    ),
+    // Lock state is all-or-nothing and encodes the fixed 30-day reactivation
+    // window (`lockedAt` MUST be the paid-access-end timestamp, not the
+    // timestamp of the job that applied the lock).
+    check(
+      "token_lots_lock_consistent",
+      sql`
+    (${t.lockedAt} IS NULL AND ${t.lockExpiresAt} IS NULL AND ${t.lockedTokens} = 0)
+    OR (${t.lockedAt} IS NOT NULL AND ${t.lockExpiresAt} IS NOT NULL
+        AND ${t.lockExpiresAt} = ${t.lockedAt} + interval '30 days'
+        AND ${t.lockedTokens} >= 0)
+  `,
+    ),
+    // While locked, the lot must not expire before the reactivation deadline.
+    check(
+      "token_lots_lock_window_not_expired",
+      sql`${t.lockedAt} IS NULL OR ${t.expiresAt} IS NULL OR ${t.expiresAt} >= ${t.lockExpiresAt}`,
     ),
     check(
       "token_lots_type_target_consistent",
@@ -540,6 +815,14 @@ export const tokenTransactions = pgTable(
       onDelete: "restrict",
     }),
     transactionKey: text("transaction_key").notNull(),
+    /**
+     * Shared reference linking the two sides of a paired operation. Paired
+     * carry-forward entries use `carry:{oldLotId}:{newLotId}` on both rows
+     * while `transactionKey` stays unique per row
+     * (`carry:{oldLotId}:{newLotId}:out` / `...:in`), making the pair
+     * exactly-once and queryable as a unit.
+     */
+    referenceKey: text("reference_key"),
     transactionType: tokenTransactionTypeEnum("transaction_type").notNull(),
     amount: bigint("amount", { mode: "number" }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -553,12 +836,16 @@ export const tokenTransactions = pgTable(
       t.createdAt.desc(),
     ),
     index("token_transactions_lot_created_idx").on(t.tokenLotId, t.createdAt),
+    index("token_transactions_reference_idx")
+      .on(t.referenceKey)
+      .where(sql`${t.referenceKey} IS NOT NULL`),
     check("token_transactions_amount_nonzero", sql`${t.amount} <> 0`),
     check(
       "token_transactions_amount_matches_type",
       sql`
-    (${t.transactionType} IN ('grant', 'release', 'refund', 'adjustment') AND ${t.amount} > 0)
-    OR (${t.transactionType} = 'consume' AND ${t.amount} < 0)
+    (${t.transactionType}::text IN ('grant', 'release', 'refund', 'adjustment', 'unlock') AND ${t.amount} > 0)
+    OR (${t.transactionType}::text IN ('consume', 'lock', 'expire') AND ${t.amount} < 0)
+    OR (${t.transactionType}::text = 'carry_forward' AND ${t.amount} <> 0)
   `,
     ),
   ],
@@ -592,6 +879,25 @@ export const storageObjects = pgTable(
   ],
 );
 
+/**
+ * Plugin access records for a user.
+ *
+ * Lifecycle contract:
+ * - `source = 'plan'` — a plan-included *selection* made under the user's
+ *   current agent plan. Always bound to the `subscriptionId` it was made
+ *   under; eligibility is derived from that subscription's status/period and
+ *   the plan's capabilities, never stored here. On plan expiry or plan
+ *   change, obsolete rows are revoked (`revokedAt`) before replacements are
+ *   inserted — the partial unique index below enforces that ordering.
+ * - `source = 'purchase'` — permanent ownership bought separately on the
+ *   website. Never references a subscription, never expires, and is never
+ *   deleted because a subscription ends; it may only be revoked
+ *   (`revokedAt`) for refund/fraud cases. Access to a purchased plugin is
+ *   still gated at authorization time by an active eligible agent plan.
+ *
+ * Effective access is derived (source + `revokedAt` + subscription state +
+ * plan capabilities); no duplicated access flags are stored here.
+ */
 export const pluginEntitlements = pgTable(
   "plugin_entitlements",
   {
@@ -603,6 +909,10 @@ export const pluginEntitlements = pgTable(
       .notNull()
       .references(() => plugins.id, { onDelete: "restrict" }),
     source: pluginEntitlementSourceEnum("source").notNull(),
+    subscriptionId: uuid("subscription_id").references(
+      () => subscriptions.id,
+      { onDelete: "restrict" },
+    ),
     startsAt: timestamp("starts_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -616,9 +926,28 @@ export const pluginEntitlements = pgTable(
     index("plugin_entitlements_user_plugin_active_idx")
       .on(t.userId, t.pluginId)
       .where(sql`${t.revokedAt} IS NULL`),
+    index("plugin_entitlements_user_idx").on(t.userId),
+    index("plugin_entitlements_subscription_idx").on(t.subscriptionId),
+    // One active plan selection per (user, plugin): re-selecting under a new
+    // plan requires revoking the previous selection first.
+    uniqueIndex("plugin_entitlements_plan_active_unique")
+      .on(t.userId, t.pluginId)
+      .where(sql`${t.source} = 'plan' AND ${t.revokedAt} IS NULL`),
+    // One active ownership row per (user, plugin): a plugin is purchased once.
+    uniqueIndex("plugin_entitlements_purchase_active_unique")
+      .on(t.userId, t.pluginId)
+      .where(sql`${t.source} = 'purchase' AND ${t.revokedAt} IS NULL`),
     check(
       "plugin_entitlements_period_valid",
       sql`${t.expiresAt} IS NULL OR ${t.expiresAt} > ${t.startsAt}`,
+    ),
+    check(
+      "plugin_entitlements_plan_requires_subscription",
+      sql`${t.source} <> 'plan' OR ${t.subscriptionId} IS NOT NULL`,
+    ),
+    check(
+      "plugin_entitlements_purchase_ownership",
+      sql`${t.source} <> 'purchase' OR (${t.subscriptionId} IS NULL AND ${t.expiresAt} IS NULL)`,
     ),
   ],
 );
@@ -836,6 +1165,7 @@ export const subscriptionsRelations = relations(
       references: [plans.id],
     }),
     periods: many(subscriptionPeriods),
+    pluginEntitlements: many(pluginEntitlements),
   }),
 );
 
@@ -847,6 +1177,17 @@ export const subscriptionPeriodsRelations = relations(
       references: [subscriptions.id],
     }),
     tokenLots: many(tokenLots),
+    tokenGrants: many(subscriptionPeriodGrants),
+  }),
+);
+
+export const subscriptionPeriodGrantsRelations = relations(
+  subscriptionPeriodGrants,
+  ({ one }) => ({
+    subscriptionPeriod: one(subscriptionPeriods, {
+      fields: [subscriptionPeriodGrants.subscriptionPeriodId],
+      references: [subscriptionPeriods.id],
+    }),
   }),
 );
 
@@ -924,10 +1265,21 @@ export const storageObjectsRelations = relations(storageObjects, ({ one }) => ({
   user: one(users, { fields: [storageObjects.userId], references: [users.id] }),
 }));
 
-export const pluginsRelations = relations(plugins, ({ many }) => ({
+export const pluginsRelations = relations(plugins, ({ one, many }) => ({
+  category: one(pluginCategories, {
+    fields: [plugins.pluginCategoryId],
+    references: [pluginCategories.id],
+  }),
   entitlements: many(pluginEntitlements),
   orderItems: many(orderItems),
 }));
+
+export const pluginCategoriesRelations = relations(
+  pluginCategories,
+  ({ many }) => ({
+    plugins: many(plugins),
+  }),
+);
 
 export const pluginEntitlementsRelations = relations(
   pluginEntitlements,
@@ -939,6 +1291,10 @@ export const pluginEntitlementsRelations = relations(
     plugin: one(plugins, {
       fields: [pluginEntitlements.pluginId],
       references: [plugins.id],
+    }),
+    subscription: one(subscriptions, {
+      fields: [pluginEntitlements.subscriptionId],
+      references: [subscriptions.id],
     }),
   }),
 );
