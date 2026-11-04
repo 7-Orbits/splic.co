@@ -1,0 +1,10 @@
+# `getrandom` 0.3 needs to be told which backend to use on
+# `wasm32-unknown-unknown` (the crate has no automatic fallback there), and
+# the `wasm_js` Cargo feature alone is not enough — the cfg must be set too.
+# Used for PKCE/state/nonce generation in the web build. Native builds are
+# unaffected: this target table only applies to `wasm32-unknown-unknown`.
+#
+# Note: cargo skips target rustflags when `$RUSTFLAGS` is set in the
+# environment, so the web build should not override `RUSTFLAGS`.
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "getrandom_backend=\"wasm_js\""]
